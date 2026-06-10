@@ -9,6 +9,5 @@ package com.example.composecompilerreproducer
 // the holder (see ScreenState.kt).
 internal data class ProductItem(
     val scanCode: String, // stable key for LazyColumn
-    val name: String,
     val additionalCost: AdditionalCost?,
 )

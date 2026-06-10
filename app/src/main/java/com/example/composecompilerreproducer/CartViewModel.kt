@@ -22,7 +22,6 @@ internal class CartViewModel : ViewModel() {
         val id = "code-${counter++}"
         val newItem = ProductItem(
             scanCode = id,
-            name = "Product $id",
             additionalCost = AdditionalCost(quantity = 1, singleValue = 25),
         )
         _state.update { current ->
@@ -35,7 +34,7 @@ internal class CartViewModel : ViewModel() {
 
     private fun initialState() = ScreenState(
         items = listOf(
-            ProductItem(scanCode = "code-${counter++}", name = "Product code-0", additionalCost = AdditionalCost(quantity = 1, singleValue = 10)),
+            ProductItem(scanCode = "code-${counter++}", additionalCost = AdditionalCost(quantity = 1, singleValue = 10)),
         ),
     )
 }
