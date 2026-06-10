@@ -62,12 +62,16 @@ internal fun Screen(
             ) {
                 Text("Add product (prepends a new item)")
             }
-            // Mirror the real SDK CartScreen: `when`-dispatch over the sealed base type.
             CartScreen(state = state)
         }
     }
 }
 
+/**
+ * Mirrors the real SDK's `CartScreen`: `when`-dispatches over the sealed base type and passes the
+ * `@Immutable` [ScreenState] holder down to [Products]. On Compose compiler 2.4.0 this
+ * `CartScreen -> Products` call is wrongly skipped, so [Products] keeps its stale first list.
+ */
 @Composable
 internal fun CartScreen(state: CartScreenState) {
     SideEffect { Log.d(TAG, "CartScreen recomposed: state=${(state as? ScreenState)?.items?.size}") }
@@ -77,6 +81,10 @@ internal fun CartScreen(state: CartScreenState) {
     }
 }
 
+/**
+ * The wrongly-skipped child on 2.4.0: it receives the `@Immutable` [ScreenState] holder but is
+ * not re-invoked when the holder changes, so the newly added items never render.
+ */
 @Composable
 internal fun Products(state: ScreenState) {
     SideEffect { Log.d(TAG, "Products recomposed: ${state.items.size} items") }

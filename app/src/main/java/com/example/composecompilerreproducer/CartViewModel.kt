@@ -20,7 +20,7 @@ internal class CartViewModel : ViewModel() {
 
     private var counter = 0
 
-    /** PREPENDS a new product at index 0, producing a new list + new ScreenState each time. */
+    /** PREPENDS a new product at index 0, producing a new list + new [ScreenState] each time. */
     fun addProduct() {
         val id = "code-${counter++}"
         val newItem = ProductItem(
