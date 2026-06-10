@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-private const val TAG = "Recompose"
+private const val TAG = "Repro"
 
 class MainActivity : ComponentActivity() {
 

@@ -30,7 +30,7 @@ internal class CartViewModel : ViewModel() {
         _state.update { current ->
             val prev = current as? ScreenState
             val next = ScreenState(items = (listOf(newItem) + prev?.items.orEmpty()).toImmutableList())
-            Log.d("Recompose", "VM emit: ${next.items.size} items")
+            Log.d("Repro", "VM emit: ${next.items.size} items")
             next
         }
     }

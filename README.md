@@ -16,7 +16,7 @@ Press **"Add product"** repeatedly:
 
 Reproduces in both **debug** and **R8-minified release** builds.
 
-`adb logcat -s Recompose` shows the parent gets the new state but the child re-runs with the old one:
+`adb logcat -s Repro` shows the parent gets the new state but the child re-runs with the old one:
 
 ```
 VM emit: 2 items
@@ -108,5 +108,5 @@ cat app/build/compose_compiler/app-classes.txt   # look for ProductItem
 - The release build type enables R8 (`optimization { enable = true }`, gated by
   `android.r8.gradual.support=true` in `gradle.properties`) and signs with the debug key so it is
   installable.
-- Recomposition logging: `SideEffect { Log.d("Recompose", ...) }` in the `CartViewModel` and each composable (`Screen`, `CartScreen`, `Products`, `ProductRow`).
+- Recomposition logging: `SideEffect { Log.d("Repro", ...) }` in the `CartViewModel` and each composable (`Screen`, `CartScreen`, `Products`, `ProductRow`).
 
