@@ -16,8 +16,15 @@ import kotlinx.coroutines.launch
  */
 internal class CartViewModel : ViewModel() {
 
-    private val _state = MutableStateFlow(initialState())
-    val state: StateFlow<ScreenState> = _state.asStateFlow()
+    private val _state = MutableStateFlow<CartScreenState>(initialState())
+    val state: StateFlow<CartScreenState> = _state.asStateFlow()
+
+    // Mirror the real SDK: a SEPARATE StateFlow of an `Uncertain` type, threaded into the cart
+    // screen and captured by the LazyColumn content lambda.
+    private val _missionState = MutableStateFlow(
+        MissionTooltipState(lastModifiedScanCode = "", show = false, missionDetails = null),
+    )
+    val missionState: StateFlow<MissionTooltipState> = _missionState.asStateFlow()
 
     private var counter = 0
 
@@ -43,22 +50,29 @@ internal class CartViewModel : ViewModel() {
 
         // Emission #1: loading / "Evaluating"
         _state.update { current ->
-            ScreenState(
-                items = listOf(newItem) + current.items,
-                total = current.total + 100,
+            val items = (current as? ScreenState)?.items.orEmpty()
+            val total = current.total
+            val next = ScreenState(
+                items = listOf(newItem) + items,
+                total = total + 100,
             )
+            android.util.Log.d("Recompose", "VM emit #1: ${next.items.size} items, total=${next.total}")
+            next
         }
 
         // Emission #2: evaluated, ~120ms later
         viewModelScope.launch {
             delay(120)
             _state.update { current ->
-                ScreenState(
-                    items = current.items.map {
+                val items = (current as? ScreenState)?.items.orEmpty()
+                val next = ScreenState(
+                    items = items.map {
                         if (it.scanCode == id) it.copy(isLoading = false) else it
                     },
                     total = current.total,
                 )
+                android.util.Log.d("Recompose", "VM emit #2: ${next.items.size} items, total=${next.total}")
+                next
             }
         }
     }

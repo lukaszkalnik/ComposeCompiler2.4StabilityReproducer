@@ -1,5 +1,59 @@
 # NOTES TO SELF — build a runtime reproducer for the LazyColumn "missing 2nd item" bug
 
+## ✅ RESOLVED (2026-06-10) — the runtime bug now reproduces on device (Pixel 7)
+
+The original flat reproducer (`Screen` collects the flow and calls `Products(state)` directly)
+produced the correct **compiler-report** diff (`ProductItem` → `Runtime(AdditionalCost)`), but
+rendered fine at runtime. The missing ingredient was the **UI pipeline shape**, not the models.
+
+**Essential trigger (verified by bisection):** an intermediate `restartable` composable
+(`CartScreen`) that
+
+1. is fed the **sealed base type** `CartScreenState` (collected via `collectAsStateWithLifecycle`),
+2. `when`-dispatches and **passes the `@Immutable` holder (`ScreenState`) down as a parameter**
+   to `Products`.
+
+That mirrors the real SDK chain `CartScreen(CartScreenState) → CartWithItemsScreen → CartProducts`,
+which the flat reproducer had collapsed into one composable.
+
+**On-device result (same code, only the Kotlin/compiler version changes):**
+
+| Config (default BOM 2026.05.01)                          | Render                           |
+|----------------------------------------------------------|----------------------------------|
+| Kotlin **2.4.0**, holder `ScreenState` `@Immutable`      | ❌ stuck at 1 item (`code-0`)     |
+| Kotlin **2.3.21**, identical code                        | ✅ all items render               |
+| Kotlin 2.4.0, **remove `@Immutable` from holder**        | ✅ all items render (the fix)     |
+| Kotlin 2.4.0, add `@Immutable` to **leaf** `ProductItem` | ❌ still stuck — does **not** fix |
+
+Smoking-gun logs on 2.4.0 (one "Add"):
+
+```
+VM emit #1: 2 items, total=200
+CartScreen recomposed: state=2          ← parent sees the new 2-item state
+Products recomposed: 1 items, total=100 ← child re-runs with the STALE 1-item state
+```
+
+`CartScreen` holds the new state but the call `Products(state=new)` is **wrongly skipped** (the
+`@Immutable` holder is treated as unchanged by 2.4's runtime stability inference of its
+`Runtime(...)` member), so `Products` keeps its stale captured `state` → the prepended item never
+appears.
+
+Notes:
+
+- The extra `Uncertain` `MissionTooltipState` param (Uuid-based `MissionDetails`) mirrors the SDK
+  but is **not required** to trigger the bug (bisected). It is kept for SDK fidelity.
+- Other SDK features tested and ruled OUT as the trigger: newer Compose BOM (2026.05.01),
+  `Modifier.animateItem()`, the leading `item {}` header. Duplicate LazyColumn keys were also
+  ruled out — they **crash** (`Key "…" was already used`) rather than silently drop an item.
+- The relevant fix for the SDK is **removing `@Immutable` from the holder** (matches the
+  user-confirmed fix), NOT annotating the leaf.
+
+---
+
+# (original investigation notes below)
+
+# NOTES TO SELF — build a runtime reproducer for the LazyColumn "missing 2nd item" bug
+
 Status: TODO. Goal is a tiny standalone Android Compose project that **actually reproduces the missing
 item at runtime** (not just the compiler-report stable→runtime diff, which we already have).
 

@@ -20,7 +20,10 @@ material = "1.10.0"
 # Compose — kept IDENTICAL across both compiler versions (prove it's the compiler).
 activityCompose = "1.10.1"
 lifecycle = "2.9.0"
-composeBom = "2025.06.00"
+# Matched to the real SDK's Compose BOM to rule out a foundation/runtime (LazyColumn /
+# animateItem / strong-skipping) behaviour difference vs the compiler.
+#   composeBom = "2025.06.00"  # original reproducer value
+composeBom = "2026.05.01"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
