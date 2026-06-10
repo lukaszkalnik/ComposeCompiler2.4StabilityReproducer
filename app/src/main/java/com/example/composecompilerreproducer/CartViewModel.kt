@@ -26,9 +26,9 @@ internal class CartViewModel : ViewModel() {
             additionalCost = AdditionalCost(quantity = 1, singleValue = 25),
         )
         _state.update { current ->
-            val items = (current as? ScreenState)?.items.orEmpty()
-            val next = ScreenState(items = listOf(newItem) + items, total = current.total + 100)
-            android.util.Log.d("Recompose", "VM emit: ${next.items.size} items, total=${next.total}")
+            val prev = current as? ScreenState
+            val next = ScreenState(items = listOf(newItem) + prev?.items.orEmpty())
+            android.util.Log.d("Recompose", "VM emit: ${next.items.size} items")
             next
         }
     }
@@ -37,6 +37,5 @@ internal class CartViewModel : ViewModel() {
         items = listOf(
             ProductItem(scanCode = "code-${counter++}", name = "Product code-0", additionalCost = AdditionalCost(quantity = 1, singleValue = 10)),
         ),
-        total = 100,
     )
 }

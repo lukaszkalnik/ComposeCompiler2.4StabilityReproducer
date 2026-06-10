@@ -46,10 +46,12 @@ That is why the model types are each `internal` and each in their own file
 ## Project shape (mirrors the real Cart screen)
 
 ```
-StateFlow<ScreenState>            (CartViewModel)
+StateFlow<CartScreenState>        (CartViewModel)   ← sealed base type
         │  collectAsStateWithLifecycle()
         ▼
 Screen(state)                     reads state, hosts the "Add" button
+        ▼
+CartScreen(state: CartScreenState)  when-dispatch over the sealed type
         ▼
 Products(state: ScreenState)      @Immutable param → skippable; hosts the LazyColumn
         ▼
@@ -71,9 +73,13 @@ internal data class ProductItem(
     val additionalCost: AdditionalCost?,  // ← the field 2.4.0 resolves at runtime
 )
 
-// ScreenState.kt
+// ScreenState.kt — a SEALED hierarchy with (at least) two subclasses is required to trigger
+// the bug; a single-subclass sealed type or a plain class does NOT reproduce.
+internal sealed class CartScreenState
+internal data object EmptyCartScreenState : CartScreenState()
+
 @Immutable
-internal data class ScreenState(val items: List<ProductItem>, val total: Int)
+internal data class ScreenState(val items: List<ProductItem>) : CartScreenState()
 ```
 
 `CartViewModel`:

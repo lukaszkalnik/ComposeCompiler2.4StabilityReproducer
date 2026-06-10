@@ -6,12 +6,18 @@ The original flat reproducer (`Screen` collects the flow and calls `Products(sta
 produced the correct **compiler-report** diff (`ProductItem` → `Runtime(AdditionalCost)`), but
 rendered fine at runtime. The missing ingredient was the **UI pipeline shape**, not the models.
 
-**Essential trigger (verified by bisection):** an intermediate `restartable` composable
+**Essential trigger (verified by bisection on device):** an intermediate `restartable` composable
 (`CartScreen`) that
 
-1. is fed the **sealed base type** `CartScreenState` (collected via `collectAsStateWithLifecycle`),
+1. is fed a **sealed base type** `CartScreenState` **with ≥2 subclasses** (e.g.
+   `EmptyCartScreenState` + `ScreenState`) — a single-subclass sealed type or a plain class does
+   **not** reproduce,
 2. `when`-dispatches and **passes the `@Immutable` holder (`ScreenState`) down as a parameter**
-   to `Products`.
+   to `Products`,
+
+while `ScreenState` holds a `List<ProductItem>` where `ProductItem` is `internal` and references
+the `internal` leaf `AdditionalCost` in a **different file** (→ 2.4 demotes `ProductItem` to
+`Runtime(AdditionalCost)`).
 
 That mirrors the real SDK chain `CartScreen(CartScreenState) → CartWithItemsScreen → CartProducts`,
 which the flat reproducer had collapsed into one composable.
@@ -28,9 +34,9 @@ which the flat reproducer had collapsed into one composable.
 Smoking-gun logs on 2.4.0 (one "Add"):
 
 ```
-VM emit: 2 items, total=200
+VM emit: 2 items
 CartScreen recomposed: state=2          ← parent sees the new 2-item state
-Products recomposed: 1 items, total=100 ← child re-runs with the STALE 1-item state
+Products recomposed: 1 items            ← child re-runs with the STALE 1-item state
 ```
 
 `CartScreen` holds the new state but the call `Products(state=new)` is **wrongly skipped** (the
@@ -103,7 +109,7 @@ The trigger is a leaf type that 2.4.0 demotes. Mirror `ProductCartItemState`'s s
 - [ ] Holder annotated like the real `CartWithItemsScreenState`:
   ```kotlin
   @Immutable
-  data class ScreenState(val items: List<ProductItem>, val total: Int)
+  data class ScreenState(val items: List<ProductItem>) : CartScreenState()
   ```
 - [ ] Confirm in the report: 2.4.0 → `ProductItem` = `runtime`, `ScreenState` = `stable` (via @Immutable).
 

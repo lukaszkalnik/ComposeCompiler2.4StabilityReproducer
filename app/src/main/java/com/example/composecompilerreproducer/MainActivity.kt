@@ -82,7 +82,7 @@ internal fun CartScreen(state: CartScreenState) {
 
 @Composable
 internal fun Products(state: ScreenState) {
-    SideEffect { Log.d(TAG, "Products recomposed: ${state.items.size} items, total=${state.total}") }
+    SideEffect { Log.d(TAG, "Products recomposed: ${state.items.size} items") }
 
     LazyColumn(
         modifier = Modifier
