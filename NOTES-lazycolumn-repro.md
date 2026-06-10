@@ -28,7 +28,7 @@ which the flat reproducer had collapsed into one composable.
 Smoking-gun logs on 2.4.0 (one "Add"):
 
 ```
-VM emit #1: 2 items, total=200
+VM emit: 2 items, total=200
 CartScreen recomposed: state=2          ← parent sees the new 2-item state
 Products recomposed: 1 items, total=100 ← child re-runs with the STALE 1-item state
 ```
@@ -98,7 +98,6 @@ The trigger is a leaf type that 2.4.0 demotes. Mirror `ProductCartItemState`'s s
       val scanCode: String,         // key
       val name: String,
       val additionalCost: AdditionalCost?,   // <-- the field that makes 2.4.0 say Runtime(AdditionalCost)
-      val isLoading: Boolean,
   )
   ```
 - [ ] Holder annotated like the real `CartWithItemsScreenState`:
@@ -119,8 +118,6 @@ Mirror Cart → Products → LazyColumn, fed by a StateFlow:
 - [ ] Use `Modifier.animateItem()` like the real screen (keep as a toggle — could interact).
 - [ ] "Add" button **prepends** a new item at index 0 (matches `addNewProductToCart` which inserts at 0),
   producing a NEW list + NEW ScreenState each time.
-- [ ] Replicate the **double emission** the real VM does: emit `isLoading=true` (Evaluating) then
-  `isLoading=false` (Evaluated) ~100ms apart. (Real `handleCartWithProducts` runs per cart emission.)
 
 ## 4. Experiment matrix (flip ONE at a time; record renders? + report verdict)
 
@@ -130,7 +127,6 @@ Mirror Cart → Products → LazyColumn, fed by a StateFlow:
 - [ ] item position: **prepend(0)** vs append(end)
 - [ ] `key`: present (`scanCode`) vs absent
 - [ ] `animateItem()`: on vs off
-- [ ] emissions: single vs double(loading→evaluated)
 - [ ] `collectAsStateWithLifecycle` vs `collectAsState` vs direct `mutableStateOf`
 - [ ] flag `-Xannotation-default-target=param-property`: present vs absent (and try
   `languageVersion=2.3` under the 2.4 compiler to see if it's language-version gated)
@@ -154,7 +150,6 @@ Goal: smallest combination that flips render? between 2.3.21 and 2.4.0.
   is what actually re-runs the content.
 - [ ] H3: `key` collision (duplicate/blank `scanCode`) independently drops the 2nd item — RULE OUT by
   using guaranteed-unique keys, since real fractional-qty products can reuse productId.
-- [ ] H4: It's the **double emission** + skipping interaction, not single add.
 - [ ] Expectation: removing holder `@Immutable` OR annotating leaf `@Immutable` both fix → confirms the
   stability mismatch is the cause, consistent with the report diff.
 

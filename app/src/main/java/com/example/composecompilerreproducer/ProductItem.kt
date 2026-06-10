@@ -13,6 +13,4 @@ internal data class ProductItem(
     val scanCode: String, // stable key for LazyColumn
     val name: String,
     val additionalCost: AdditionalCost?,
-    val isLoading: Boolean,
 )
-

@@ -69,7 +69,6 @@ internal data class ProductItem(
     val scanCode: String,                 // LazyColumn key
     val name: String,
     val additionalCost: AdditionalCost?,  // ← the field 2.4.0 resolves at runtime
-    val isLoading: Boolean,
 )
 
 // ScreenState.kt
@@ -77,12 +76,10 @@ internal data class ProductItem(
 internal data class ScreenState(val items: List<ProductItem>, val total: Int)
 ```
 
-`CartViewModel` mirrors the real `handleCartWithProducts`:
+`CartViewModel`:
 
 - the "Add" action **prepends** a brand-new `ProductItem` at index 0, producing a **new list +
-  new `ScreenState`** each time (no in-place mutation — structural equality genuinely differs);
-- it replicates the real **double emission**: first `isLoading = true` (Evaluating), then
-  `isLoading = false` (Evaluated) ~120 ms later.
+  new `ScreenState`** each time (no in-place mutation — structural equality genuinely differs).
 
 ---
 
@@ -166,7 +163,6 @@ Both are wired as one-line toggles in the source:
 | same file vs different files                 | different (current) vs merged into one file    |
 | add position                                 | prepend(0) (current) vs append(end)            |
 | LazyColumn `key`                             | present (`scanCode`) vs absent                 |
-| emissions                                    | double (current) vs single                     |
 | `-Xannotation-default-target=param-property` | present (current) vs absent                    |
 
 ---
@@ -176,7 +172,7 @@ Both are wired as one-line toggles in the source:
 - `app/src/main/java/.../Model.kt` — `AdditionalCost` (leaf, stable on both)
 - `app/src/main/java/.../ProductItem.kt` — `ProductItem` (demoted to `Runtime` on 2.4.0)
 - `app/src/main/java/.../ScreenState.kt` — `@Immutable` holder + sealed `CartScreenState` base
-- `app/src/main/java/.../CartViewModel.kt` — prepend + double emission
+- `app/src/main/java/.../CartViewModel.kt` — prepend (new list + new `ScreenState`)
 - `app/src/main/java/.../MainActivity.kt` — `Screen` → `CartScreen` → `Products` → `LazyColumn` → `ProductRow`
 - `app/build.gradle.kts` — Compose setup + compiler reports + `-Xannotation-default-target`
 - `gradle/libs.versions.toml` — the version toggle

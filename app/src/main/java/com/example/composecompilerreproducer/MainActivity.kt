@@ -115,10 +115,6 @@ internal fun ProductRow(item: ProductItem, modifier: Modifier = Modifier) {
             item.additionalCost?.let { cost ->
                 Text(text = "deposit x${cost.quantity} @ ${cost.singleValue}")
             }
-            if (item.isLoading) {
-                Text(text = "Loading…")
-            }
         }
     }
 }
-
