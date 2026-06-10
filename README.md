@@ -61,7 +61,8 @@ All four are necessary (each was verified on-device by removing it):
 1. **`ProductItem` is `internal` and references the `internal` leaf `AdditionalCost` in a different
    file.** This is what makes the 2.4 compiler report demote `ProductItem` from `Stable` to
    `Runtime(AdditionalCost)`.
-2. **The holder `ScreenState` is `@Immutable`** and contains `List<ProductItem>`.
+2. **The holder `ScreenState` is `@Immutable`** and contains `ImmutableList<ProductItem>` (a plain
+   `List` reproduces identically — the stable collection type does not help).
 3. **The state is exposed as a sealed base type `CartScreenState` with at least 2 subclasses**
    (`EmptyCartScreenState` + `ScreenState`). A single-subclass sealed type, or a plain class, does
    not reproduce.
@@ -107,5 +108,5 @@ cat app/build/compose_compiler/app-classes.txt   # look for ProductItem
 - The release build type enables R8 (`optimization { enable = true }`, gated by
   `android.r8.gradual.support=true` in `gradle.properties`) and signs with the debug key so it is
   installable.
-- Recomposition logging: `SideEffect { Log.d("Recompose", ...) }` in `CartScreen` / `Products`.
+- Recomposition logging: `SideEffect { Log.d("Recompose", ...) }` in the `CartViewModel` and each composable (`Screen`, `CartScreen`, `Products`, `ProductRow`).
 
