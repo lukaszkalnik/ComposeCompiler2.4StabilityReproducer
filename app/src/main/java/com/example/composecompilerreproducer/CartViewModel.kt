@@ -1,5 +1,6 @@
 package com.example.composecompilerreproducer
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,7 @@ internal class CartViewModel : ViewModel() {
         _state.update { current ->
             val prev = current as? ScreenState
             val next = ScreenState(items = listOf(newItem) + prev?.items.orEmpty())
-            android.util.Log.d("Recompose", "VM emit: ${next.items.size} items")
+            Log.d("Recompose", "VM emit: ${next.items.size} items")
             next
         }
     }

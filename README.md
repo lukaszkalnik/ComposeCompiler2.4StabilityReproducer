@@ -71,7 +71,7 @@ StateFlow<CartScreenState> -> Screen -> CartScreen(when-dispatch) -> Products(Sc
 ```
 
 ```kotlin
-// Model.kt        (internal leaf, own file)     -> Stable on both
+// AdditionalCost.kt  (internal leaf, own file)   -> Stable on both
 internal data class AdditionalCost(val value: Int)
 
 // ProductItem.kt  (internal, own file)          -> Stable on 2.3.21, Runtime(AdditionalCost) on 2.4.0
