@@ -43,12 +43,16 @@ kotlin = "2.4.0"     # BROKEN
 ## The fix
 
 Remove `@Immutable` from the holder `ScreenState`
-([`ScreenState.kt`](app/src/main/java/com/example/composecompilerreproducer/ScreenState.kt)). It is
-then inferred unstable (it holds a `List`), so `Products` is no longer skippable and re-runs with
-the new list.
+([`ScreenState.kt`](app/src/main/java/com/example/composecompilerreproducer/ScreenState.kt)). Its
+stability is then inferred from its members (`ProductItem` is `Runtime` on 2.4.0), so `Products` is
+no longer unconditionally skippable and re-runs with the new list.
 
 Annotating the leaf `ProductItem` with `@Immutable` does **not** fix it — the holder stays
 `@Immutable` and is still wrongly skipped.
+
+Using `kotlinx.collections.immutable.ImmutableList` for `items` (the officially recommended stable
+collection type) does **not** fix it either — the `@Immutable` holder is still wrongly skipped.
+Removing `@Immutable` is the only fix.
 
 ## What is required to trigger it
 
@@ -80,7 +84,7 @@ internal data class ProductItem(val scanCode: String, val additionalCost: Additi
 // ScreenState.kt  (sealed base + @Immutable holder)
 internal sealed class CartScreenState
 internal data object EmptyCartScreenState : CartScreenState()
-@Immutable internal data class ScreenState(val items: List<ProductItem>) : CartScreenState()
+@Immutable internal data class ScreenState(val items: ImmutableList<ProductItem>) : CartScreenState()
 ```
 
 ## Compiler stability report

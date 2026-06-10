@@ -2,6 +2,8 @@ package com.example.composecompilerreproducer
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,14 +29,14 @@ internal class CartViewModel : ViewModel() {
         )
         _state.update { current ->
             val prev = current as? ScreenState
-            val next = ScreenState(items = listOf(newItem) + prev?.items.orEmpty())
+            val next = ScreenState(items = (listOf(newItem) + prev?.items.orEmpty()).toImmutableList())
             Log.d("Recompose", "VM emit: ${next.items.size} items")
             next
         }
     }
 
     private fun initialState() = ScreenState(
-        items = listOf(
+        items = persistentListOf(
             ProductItem(scanCode = "code-${counter++}", additionalCost = AdditionalCost(value = 10)),
         ),
     )
