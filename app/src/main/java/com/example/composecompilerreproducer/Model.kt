@@ -5,6 +5,5 @@ package com.example.composecompilerreproducer
 // Compose compiler 2.4 demote `ProductItem` to `Runtime(AdditionalCost)` (on 2.3.21 it stays
 // `Stable`). See app/build/compose_compiler/app-classes.txt after a build.
 internal data class AdditionalCost(
-    val quantity: Int,
-    val singleValue: Int,
+    val value: Int,
 )
