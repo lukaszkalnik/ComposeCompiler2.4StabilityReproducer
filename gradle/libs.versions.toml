@@ -11,8 +11,8 @@ kotlin = "2.4.0"
 # kotlin = "2.3.21"
 
 # Compose — kept IDENTICAL across both compiler versions (prove it's the compiler).
-activityCompose = "1.10.1"
-lifecycle = "2.9.0"
+activityCompose = "1.13.0"
+lifecycle = "2.10.0"
 # Matched to the real SDK's Compose BOM to rule out a foundation/runtime (LazyColumn /
 # animateItem / strong-skipping) behaviour difference vs the compiler.
 composeBom = "2026.05.01"
