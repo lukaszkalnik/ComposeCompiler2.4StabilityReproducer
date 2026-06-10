@@ -1,4 +1,0 @@
-<resources>
-    <!-- Base theme: no library dependency needed, the UI is fully Compose (MaterialTheme). -->
-    <style name="Theme.ComposeCompiler24StabilityReproducer" parent="android:Theme.Material.NoActionBar" />
-</resources>
