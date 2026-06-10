@@ -41,9 +41,6 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
-        // Mirror the real SDK's compiler flag. The annotation-default-target change is a
-        // prime suspect for the stability-inference behaviour — keep it here as a toggle.
-        freeCompilerArgs.add("-Xannotation-default-target=param-property")
     }
 }
 
