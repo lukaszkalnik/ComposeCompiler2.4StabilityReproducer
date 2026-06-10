@@ -26,7 +26,6 @@ the leaf item type:
 
 | Type             | Kotlin **2.3.21**       | Kotlin **2.4.0**                |
 |------------------|-------------------------|---------------------------------|
-| `CostType`       | `stable` (enum)         | `stable`                        |
 | `AdditionalCost` | `stable`                | `stable`                        |
 | `ProductItem`    | **`stable`**            | **`Runtime(AdditionalCost)`** ⬅ |
 | `ScreenState`    | `stable` (`@Immutable`) | `stable` (`@Immutable`)         |
@@ -39,7 +38,7 @@ Two conditions are required to trigger the demotion, and they mirror the real SD
 2. The leaf type (`AdditionalCost`) lives in a **different file** from the type that
    references it (`ProductItem`).
 
-That is why the four model types are each `internal` and each in their own file
+That is why the model types are each `internal` and each in their own file
 (`Model.kt`, `ProductItem.kt`, `ScreenState.kt`).
 
 ---
@@ -63,8 +62,7 @@ Model types (each `internal`, each in its own file):
 
 ```kotlin
 // Model.kt
-internal enum class CostType { Deposit, PackagingTax }
-internal data class AdditionalCost(val type: CostType, val quantity: Int, val singleValue: Int)
+internal data class AdditionalCost(val quantity: Int, val singleValue: Int)
 
 // ProductItem.kt
 internal data class ProductItem(
@@ -175,11 +173,11 @@ Both are wired as one-line toggles in the source:
 
 ## Files of interest
 
-- `app/src/main/java/.../Model.kt` — `CostType`, `AdditionalCost` (leaf, stable on both)
+- `app/src/main/java/.../Model.kt` — `AdditionalCost` (leaf, stable on both)
 - `app/src/main/java/.../ProductItem.kt` — `ProductItem` (demoted to `Runtime` on 2.4.0)
-- `app/src/main/java/.../ScreenState.kt` — `@Immutable` holder
+- `app/src/main/java/.../ScreenState.kt` — `@Immutable` holder + sealed `CartScreenState` base
 - `app/src/main/java/.../CartViewModel.kt` — prepend + double emission
-- `app/src/main/java/.../MainActivity.kt` — `Screen` → `Products` → `LazyColumn` → `ProductRow`
+- `app/src/main/java/.../MainActivity.kt` — `Screen` → `CartScreen` → `Products` → `LazyColumn` → `ProductRow`
 - `app/build.gradle.kts` — Compose setup + compiler reports + `-Xannotation-default-target`
 - `gradle/libs.versions.toml` — the version toggle
 

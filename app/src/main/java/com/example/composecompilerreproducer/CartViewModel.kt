@@ -33,11 +33,7 @@ internal class CartViewModel : ViewModel() {
         val newItem = ProductItem(
             scanCode = id,
             name = "Product $id",
-            additionalCost = AdditionalCost(
-                type = CostType.Deposit,
-                quantity = 1,
-                singleValue = 25,
-            ),
+            additionalCost = AdditionalCost(quantity = 1, singleValue = 25),
             isLoading = true,
         )
 
@@ -74,7 +70,7 @@ internal class CartViewModel : ViewModel() {
         val first = ProductItem(
             scanCode = "code-${counter++}",
             name = "Product code-0",
-            additionalCost = AdditionalCost(CostType.PackagingTax, quantity = 1, singleValue = 10),
+            additionalCost = AdditionalCost(quantity = 1, singleValue = 10),
             isLoading = false,
         )
         return ScreenState(items = listOf(first), total = 100)

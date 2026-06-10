@@ -113,7 +113,7 @@ internal fun ProductRow(item: ProductItem, modifier: Modifier = Modifier) {
             Text(text = item.name, style = MaterialTheme.typography.titleMedium)
             Text(text = "scanCode: ${item.scanCode}")
             item.additionalCost?.let { cost ->
-                Text(text = "${cost.type} x${cost.quantity} @ ${cost.singleValue}")
+                Text(text = "deposit x${cost.quantity} @ ${cost.singleValue}")
             }
             if (item.isLoading) {
                 Text(text = "Loading…")
@@ -121,3 +121,4 @@ internal fun ProductRow(item: ProductItem, modifier: Modifier = Modifier) {
         }
     }
 }
+
