@@ -40,8 +40,8 @@ appears.
 
 Notes:
 
-- The extra `Uncertain` `MissionTooltipState` param (Uuid-based `MissionDetails`) mirrors the SDK
-  but is **not required** to trigger the bug (bisected). It is kept for SDK fidelity.
+- The `Uncertain` `MissionTooltipState` param (Uuid-based `MissionDetails`) was **removed**: it is
+  **not** part of the trigger (verified on device — the bug still reproduces without it).
 - Other SDK features tested and ruled OUT as the trigger: newer Compose BOM (2026.05.01),
   `Modifier.animateItem()`, the leading `item {}` header. Duplicate LazyColumn keys were also
   ruled out — they **crash** (`Key "…" was already used`) rather than silently drop an item.
@@ -107,14 +107,6 @@ The trigger is a leaf type that 2.4.0 demotes. Mirror `ProductCartItemState`'s s
   data class ScreenState(val items: List<ProductItem>, val total: Int)
   ```
 - [ ] Confirm in the report: 2.4.0 → `ProductItem` = `runtime`, `ScreenState` = `stable` (via @Immutable).
-  If `ProductItem` doesn't go `runtime`, add the `kotlin.uuid.Uuid`/sealed variant too (see §2b).
-
-### 2b. Also try the sealed/`Uuid` variant (the `Uncertain` case)
-
-- [ ] `sealed class MissionDetails { data class A(val id: kotlin.uuid.Uuid, val n: Int) : MissionDetails() }`
-- [ ] Holder `data class TooltipState(val details: MissionDetails?, val show: Boolean)`.
-- [ ] Confirm 2.4.0 → `MissionDetails` = `Uncertain`. Suspect: `kotlin.uuid.Uuid` value class. Keep a
-  variant WITHOUT `Uuid` (use `String` id) to isolate whether Uuid is the trigger.
 
 ## 3. Reproduce the real UI pipeline (nesting matters — don't flatten it)
 

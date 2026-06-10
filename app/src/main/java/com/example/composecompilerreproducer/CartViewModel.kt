@@ -19,13 +19,6 @@ internal class CartViewModel : ViewModel() {
     private val _state = MutableStateFlow<CartScreenState>(initialState())
     val state: StateFlow<CartScreenState> = _state.asStateFlow()
 
-    // Mirror the real SDK: a SEPARATE StateFlow of an `Uncertain` type, threaded into the cart
-    // screen and captured by the LazyColumn content lambda.
-    private val _missionState = MutableStateFlow(
-        MissionTooltipState(lastModifiedScanCode = "", show = false, missionDetails = null),
-    )
-    val missionState: StateFlow<MissionTooltipState> = _missionState.asStateFlow()
-
     private var counter = 0
 
     /**
@@ -87,5 +80,3 @@ internal class CartViewModel : ViewModel() {
         return ScreenState(items = listOf(first), total = 100)
     }
 }
-
-
