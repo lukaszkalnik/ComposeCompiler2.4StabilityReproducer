@@ -1,187 +1,107 @@
-# Compose Compiler 2.4 — `internal` stability-inference regression reproducer
+# Compose Compiler 2.4 — `@Immutable` over-skipping regression
 
-A minimal Android Compose project that reproduces a behaviour change introduced in the
-**Compose compiler that ships with Kotlin 2.4.0**.
+Minimal Android Compose project that reproduces a **runtime** behaviour change in the Compose
+compiler shipped with **Kotlin 2.4.0**: items added to a `LazyColumn` stop appearing on screen.
 
-> Starting from Kotlin 2.4.0, the Compose compiler offers more consistent incremental
-> compilation. **Stability of internal types across different files is now inferred during
-> runtime.** This allows Compose to update inferred stability values even when class usages
-> are not recompiled.
+> Kotlin 2.4.0 release note: *"Stability of internal types across different files is now inferred
+> during runtime."* This reproducer shows that change can make a stable (`@Immutable`) UI-state
+> holder be **wrongly skipped**, so list updates never reach the UI.
 
-In the real app the effect was: a UI-state class annotated `@Immutable` that references a
-`List<ProductItem>`, where `ProductItem` contains another (stable) type `AdditionalCost?`,
-**stopped propagating list updates to the UI**. When a new `ProductItem` was added to the
-list, it did not appear on screen.
+## Symptom
 
----
+Press **"Add product"** repeatedly:
 
-## TL;DR — what this project proves
+- **Kotlin 2.4.0 (default):** only the first item ever renders. The list is stuck. (broken)
+- **Kotlin 2.3.21 (same code):** every added item renders. (works)
 
-The single knob is the Kotlin version in [`gradle/libs.versions.toml`](gradle/libs.versions.toml)
-(the Compose compiler ships *with* Kotlin, so this switches the compiler too). Everything
-else — Compose BOM/runtime, AGP, code — is held identical.
+Reproduces in both **debug** and **R8-minified release** builds.
 
-The Compose compiler stability report (`app/build/compose_compiler/app-classes.txt`) flips for
-the leaf item type:
-
-| Type             | Kotlin **2.3.21**       | Kotlin **2.4.0**                |
-|------------------|-------------------------|---------------------------------|
-| `AdditionalCost` | `stable`                | `stable`                        |
-| `ProductItem`    | **`stable`**            | **`Runtime(AdditionalCost)`** ⬅ |
-| `ScreenState`    | `stable` (`@Immutable`) | `stable` (`@Immutable`)         |
-
-Both verdicts above were produced by actually building this project on each version.
-
-Two conditions are required to trigger the demotion, and they mirror the real SDK exactly:
-
-1. The types are **`internal`**, and
-2. The leaf type (`AdditionalCost`) lives in a **different file** from the type that
-   references it (`ProductItem`).
-
-That is why the model types are each `internal` and each in their own file
-(`Model.kt`, `ProductItem.kt`, `ScreenState.kt`).
-
----
-
-## Project shape (mirrors the real Cart screen)
+`adb logcat -s Recompose` shows the parent gets the new state but the child re-runs with the old one:
 
 ```
-StateFlow<CartScreenState>        (CartViewModel)   ← sealed base type
-        │  collectAsStateWithLifecycle()
-        ▼
-Screen(state)                     reads state, hosts the "Add" button
-        ▼
-CartScreen(state: CartScreenState)  when-dispatch over the sealed type
-        ▼
-Products(state: ScreenState)      @Immutable param → skippable; hosts the LazyColumn
-        ▼
-LazyColumn { itemsIndexed(items, key = { _, it -> it.scanCode }) { ProductRow(it) } }
-        ▼
-ProductRow(item: ProductItem)
+VM emit: 2 items
+CartScreen recomposed: state=2     <- parent sees the new 2-item state
+Products recomposed: 1 items       <- child is wrongly skipped, keeps the STALE 1-item state
 ```
 
-Model types (each `internal`, each in its own file):
-
-```kotlin
-// Model.kt
-internal data class AdditionalCost(val quantity: Int, val singleValue: Int)
-
-// ProductItem.kt
-internal data class ProductItem(
-    val scanCode: String,                 // LazyColumn key
-    val name: String,
-    val additionalCost: AdditionalCost?,  // ← the field 2.4.0 resolves at runtime
-)
-
-// ScreenState.kt — a SEALED hierarchy with (at least) two subclasses is required to trigger
-// the bug; a single-subclass sealed type or a plain class does NOT reproduce.
-internal sealed class CartScreenState
-internal data object EmptyCartScreenState : CartScreenState()
-
-@Immutable
-internal data class ScreenState(val items: List<ProductItem>) : CartScreenState()
-```
-
-`CartViewModel`:
-
-- the "Add" action **prepends** a brand-new `ProductItem` at index 0, producing a **new list +
-  new `ScreenState`** each time (no in-place mutation — structural equality genuinely differs).
-
----
-
-## How to run
+## Run it
 
 ```bash
-# default = Kotlin 2.4.0 (the broken case)
-./gradlew :app:assembleDebug
-./gradlew :app:installDebug      # or run from Android Studio
+./gradlew :app:installDebug      # default = Kotlin 2.4.0 (broken)
+./gradlew :app:installRelease    # same bug with R8 minification enabled
 ```
 
-Press **"Add product"** repeatedly and watch the list. Recomposition logging is wired via
-`SideEffect { Log.d("Recompose", ...) }` in `Screen`, `Products` and each `ProductRow`:
-
-```bash
-adb logcat -s Recompose
-```
-
----
-
-## Switching compiler versions (the one knob)
-
-Edit [`gradle/libs.versions.toml`](gradle/libs.versions.toml):
+Switch the compiler via the **one knob** in [`gradle/libs.versions.toml`](gradle/libs.versions.toml)
+(the Compose compiler ships with Kotlin, so this is the only thing that changes — BOM/AGP/code are
+held constant), then rebuild:
 
 ```toml
 kotlin = "2.4.0"     # BROKEN
 # kotlin = "2.3.21"  # WORKS
 ```
 
-…flip the comment to use `2.3.21`, then rebuild. The Compose BOM/runtime is pinned and shared
-across both, so any difference is attributable to the compiler.
+## The fix
 
-> Note: this module uses **AGP 9's built-in Kotlin** (no separate `org.jetbrains.kotlin.android`
-> plugin — AGP 9.0+ rejects it). The `kotlin` version in the catalog still drives the Compose
-> compiler plugin, and the stability verdict was verified to flip between the two versions.
+Remove `@Immutable` from the holder `ScreenState`
+([`ScreenState.kt`](app/src/main/java/com/example/composecompilerreproducer/ScreenState.kt)). It is
+then inferred unstable (it holds a `List`), so `Products` is no longer skippable and re-runs with
+the new list.
 
----
+Annotating the leaf `ProductItem` with `@Immutable` does **not** fix it — the holder stays
+`@Immutable` and is still wrongly skipped.
 
-## Inspecting the compiler stability reports
+## What is required to trigger it
 
-Reports/metrics are enabled in [`app/build.gradle.kts`](app/build.gradle.kts):
+All four are necessary (each was verified on-device by removing it):
+
+1. **`ProductItem` is `internal` and references the `internal` leaf `AdditionalCost` in a different
+   file.** This is what makes the 2.4 compiler report demote `ProductItem` from `Stable` to
+   `Runtime(AdditionalCost)`.
+2. **The holder `ScreenState` is `@Immutable`** and contains `List<ProductItem>`.
+3. **The state is exposed as a sealed base type `CartScreenState` with at least 2 subclasses**
+   (`EmptyCartScreenState` + `ScreenState`). A single-subclass sealed type, or a plain class, does
+   not reproduce.
+4. **An intermediate composable `CartScreen(state: CartScreenState)` `when`-dispatches and passes
+   the `@Immutable` holder down** to a child `Products(state: ScreenState)`. The wrong skip happens
+   at that `CartScreen -> Products` call. (Collecting the flow and calling `Products` directly does
+   not reproduce.)
+
+```
+StateFlow<CartScreenState> -> Screen -> CartScreen(when-dispatch) -> Products(ScreenState) -> LazyColumn
+```
 
 ```kotlin
-composeCompiler {
-    reportsDestination = layout.buildDirectory.dir("compose_compiler")
-    metricsDestination = layout.buildDirectory.dir("compose_compiler")
-}
+// Model.kt        (internal leaf, own file)     -> Stable on both
+internal data class AdditionalCost(val quantity: Int, val singleValue: Int)
+
+// ProductItem.kt  (internal, own file)          -> Stable on 2.3.21, Runtime(AdditionalCost) on 2.4.0
+internal data class ProductItem(val scanCode: String, val name: String, val additionalCost: AdditionalCost?)
+
+// ScreenState.kt  (sealed base + @Immutable holder)
+internal sealed class CartScreenState
+internal data object EmptyCartScreenState : CartScreenState()
+@Immutable internal data class ScreenState(val items: List<ProductItem>) : CartScreenState()
 ```
 
-After a build:
+## Compiler stability report
+
+Reports are enabled in [`app/build.gradle.kts`](app/build.gradle.kts). After a build:
 
 ```bash
-cat app/build/compose_compiler/app-classes.txt       # per-class stability verdict
-cat app/build/compose_compiler/app-composables.txt    # skippable/restartable per composable
+cat app/build/compose_compiler/app-classes.txt   # look for ProductItem
 ```
 
-Look for `ProductItem`: `Runtime(AdditionalCost)` on 2.4.0 vs `Stable` on 2.3.21.
+| Type             | Kotlin 2.3.21           | Kotlin 2.4.0                  |
+|------------------|-------------------------|-------------------------------|
+| `AdditionalCost` | `stable`                | `stable`                      |
+| `ProductItem`    | **`stable`**            | **`Runtime(AdditionalCost)`** |
+| `ScreenState`    | `stable` (`@Immutable`) | `stable` (`@Immutable`)       |
 
----
+## Notes
 
-## The two fixes (each independently makes 2.4.0 behave like 2.3.21)
-
-Both are wired as one-line toggles in the source:
-
-1. **Annotate the leaf** `ProductItem` with `@Immutable` — uncomment the line above the class
-   in [`ProductItem.kt`](app/src/main/java/com/example/composecompilerreproducer/ProductItem.kt).
-2. **Remove `@Immutable` from the holder** `ScreenState` in
-   [`ScreenState.kt`](app/src/main/java/com/example/composecompilerreproducer/ScreenState.kt)
-   so it is compared by structural equality and `Products` recomposes with the new list.
-
----
-
-## Experiment matrix (flip ONE at a time)
-
-| Variable                                     | Values                                         |
-|----------------------------------------------|------------------------------------------------|
-| compiler (`kotlin` in the catalog)           | **2.3.21** vs **2.4.0**  ← primary             |
-| holder `ScreenState` `@Immutable`            | on vs off                                      |
-| leaf `ProductItem` `@Immutable`              | on vs off                                      |
-| types `internal`                             | on vs off (off → `ProductItem` stays `stable`) |
-| same file vs different files                 | different (current) vs merged into one file    |
-| add position                                 | prepend(0) (current) vs append(end)            |
-| LazyColumn `key`                             | present (`scanCode`) vs absent                 |
-| `-Xannotation-default-target=param-property` | present (current) vs absent                    |
-
----
-
-## Files of interest
-
-- `app/src/main/java/.../Model.kt` — `AdditionalCost` (leaf, stable on both)
-- `app/src/main/java/.../ProductItem.kt` — `ProductItem` (demoted to `Runtime` on 2.4.0)
-- `app/src/main/java/.../ScreenState.kt` — `@Immutable` holder + sealed `CartScreenState` base
-- `app/src/main/java/.../CartViewModel.kt` — prepend (new list + new `ScreenState`)
-- `app/src/main/java/.../MainActivity.kt` — `Screen` → `CartScreen` → `Products` → `LazyColumn` → `ProductRow`
-- `app/build.gradle.kts` — Compose setup + compiler reports + `-Xannotation-default-target`
-- `gradle/libs.versions.toml` — the version toggle
-
-See [`NOTES-lazycolumn-repro.md`](NOTES-lazycolumn-repro.md) for the original investigation notes.
+- Uses AGP 9's built-in Kotlin (no separate `org.jetbrains.kotlin.android` plugin; AGP 9+ rejects it).
+- The release build type enables R8 (`optimization { enable = true }`, gated by
+  `android.r8.gradual.support=true` in `gradle.properties`) and signs with the debug key so it is
+  installable.
+- Recomposition logging: `SideEffect { Log.d("Recompose", ...) }` in `CartScreen` / `Products`.
 

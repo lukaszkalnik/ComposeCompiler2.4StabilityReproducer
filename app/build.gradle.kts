@@ -24,8 +24,10 @@ android {
     buildTypes {
         release {
             optimization {
-                enable = false
+                enable = true
             }
+            // Sign with the debug key so the release build is installable for this experiment.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
